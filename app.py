@@ -25,7 +25,9 @@ df["Lead Status"] = df["Lead Status"].replace({
     "WIP": "WIP",
     "Lost": "Appointment Not Fixed"
 })
-
+df['utm_source_Campaign Source']=df['utm_source_Campaign Source'].replace(
+    {"Google":"Google","google":"Google","fb":"Facebook","facebook":"Facebook","ig":"Instagram"}
+)
 variable = ["Unqualified", "WIP", "RNR", "General Enquiry", "Duplicate"]
 df = df[~df["Lead Status"].isin(variable)]
 
@@ -234,14 +236,14 @@ def generate_cross_table(df, variable):
 def add_population_mean(cross_table, overall_mean):
     cross_table['Population Mean'] = overall_mean
     return cross_table
-
-
-
+import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 def bivariate_analysis(df, variable, cross_table, selected_statuses):
     # Exclude the "Total" and "Population Mean" rows for the plots
     cross_table_plot = cross_table[~cross_table[variable].isin(["Grand Total"])]
-
+    
     # Extract counts and percentages from cross_table for the graphs
     appointment_fixed = cross_table_plot['Appointment Fixed'] if 'Appointment Fixed' in cross_table_plot.columns and 'Appointment Fixed' in selected_statuses else pd.Series()
     appointment_not_fixed = cross_table_plot['Appointment Not Fixed'] if 'Appointment Not Fixed' in cross_table_plot.columns and 'Appointment Not Fixed' in selected_statuses else pd.Series()
@@ -258,16 +260,21 @@ def bivariate_analysis(df, variable, cross_table, selected_statuses):
     else:
         overall_mean = 0
 
-    data = {
+    # Ensure missing values are at the end
+    bivariate_df = pd.DataFrame({
         variable: cross_table_plot[variable],
         "Count Fixed": appointment_fixed,
         "Count Not Fixed": appointment_not_fixed,
         "Population Percentage Fixed": population_percentage_fixed,
         "Population Percentage Not Fixed": population_percentage_not_fixed,
         "Total": appointment_fixed + appointment_not_fixed
-    }
+    })
 
-    bivariate_df = pd.DataFrame(data)
+    # Sort with "Missing" at the end
+    bivariate_df = pd.concat([
+        bivariate_df[bivariate_df[variable] != "Missing"],
+        bivariate_df[bivariate_df[variable] == "Missing"]
+    ])
 
     fig = make_subplots(rows=1, cols=1, shared_xaxes=True,
                         vertical_spacing=0.1, specs=[[{"secondary_y": True}]])
@@ -385,6 +392,7 @@ def bivariate_analysis(df, variable, cross_table, selected_statuses):
 
     print(f"Figure data: {fig}")
     return fig, overall_mean
+
 
 
 if __name__ == '__main__':
